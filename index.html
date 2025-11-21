@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fate Walker: Void Chamber</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              rarity: {
+                common: '#9ca3af',
+                uncommon: '#22c55e',
+                rare: '#3b82f6',
+                epic: '#a855f7',
+                legendary: '#eab308',
+                mythic: '#dc2626',
+                exotic: '#ec4899',
+                divine: '#06b6d4',
+                impossible: '#171717',
+              }
+            },
+            animation: {
+              'spin-slow': 'spin 3s linear infinite',
+              'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
+              'shake-hard': 'shake-hard 0.2s ease-in-out infinite',
+              'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'glitch': 'glitch 1s linear infinite',
+              'slam': 'slam 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both',
+              'flash': 'flash 1.5s ease-out forwards',
+              'float-slow': 'float 6s ease-in-out infinite',
+              'hammer-hit': 'hammer 0.8s ease-in-out',
+              'spark-fly': 'spark 0.5s ease-out forwards',
+              'magma-flow': 'magma 10s ease infinite',
+              'cooling': 'cooling 2s ease-out forwards',
+              'steam-rise': 'steam 2s ease-out infinite',
+              'warp-speed': 'warp 0.2s linear infinite',
+              'implode': 'implode 0.5s ease-in forwards',
+              'supernova': 'supernova 0.8s ease-out forwards',
+              'god-rays': 'god-rays 20s linear infinite',
+              'chromatic': 'chromatic 0.2s linear infinite',
+              'realistic-fire': 'realistic-fire 1s ease-out infinite',
+              'fog-scroll': 'fog 20s linear infinite',
+              'bat-fly': 'bat 10s linear infinite',
+              'cauldron-bubble': 'bubble 2s ease-in-out infinite',
+              'burning-core': 'burningCore 3s infinite alternate ease-in-out',
+              'burning-flame': 'burningFlame 4s infinite ease-in-out',
+              'noble-pulse': 'noblePulse 4s infinite ease-in-out',
+              'holo-sheen': 'holoSheen 5s infinite ease-in-out',
+              'cinematic-title': 'cinematicTitle 2.5s cubic-bezier(0.22, 1, 0.36, 1) forwards',
+            },
+            keyframes: {
+              shake: {
+                '10%, 90%': { transform: 'translate3d(-1px, 0, 0)' },
+                '20%, 80%': { transform: 'translate3d(2px, 0, 0)' },
+                '30%, 50%, 70%': { transform: 'translate3d(-4px, 0, 0)' },
+                '40%, 60%': { transform: 'translate3d(4px, 0, 0)' }
+              },
+              'shake-hard': {
+                '0%, 100%': { transform: 'translate(0, 0)' },
+                '25%': { transform: 'translate(-5px, 5px)' },
+                '50%': { transform: 'translate(5px, -5px)' },
+                '75%': { transform: 'translate(-5px, -5px)' }
+              },
+              glitch: {
+                '2%, 64%': { transform: 'translate(2px,0) skew(0deg)' },
+                '4%, 60%': { transform: 'translate(-2px,0) skew(0deg)' },
+                '62%': { transform: 'translate(0,0) skew(5deg)' }
+              },
+              slam: {
+                '0%': { transform: 'scale(3) translateY(-100px)', opacity: '0' },
+                '50%': { transform: 'scale(0.9) translateY(10px)', opacity: '1' },
+                '100%': { transform: 'scale(1) translateY(0)' }
+              },
+              flash: {
+                '0%': { backgroundColor: 'white', opacity: '1' },
+                '100%': { backgroundColor: 'transparent', opacity: '0' }
+              },
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-20px)' }
+              },
+              hammer: {
+                '0%': { transform: 'rotate(0deg)', transformOrigin: 'bottom right' },
+                '30%': { transform: 'rotate(-45deg)', transformOrigin: 'bottom right' },
+                '50%': { transform: 'rotate(-60deg)', transformOrigin: 'bottom right' },
+                '60%': { transform: 'rotate(0deg) scale(1.1)', transformOrigin: 'bottom right' },
+                '100%': { transform: 'rotate(0deg)', transformOrigin: 'bottom right' }
+              },
+              spark: {
+                '0%': { transform: 'translate(0, 0) scale(1)', opacity: '1' },
+                '100%': { transform: 'translate(var(--tx), var(--ty)) scale(0)', opacity: '0' }
+              },
+              magma: {
+                '0%': { backgroundPosition: '0% 50%' },
+                '50%': { backgroundPosition: '100% 50%' },
+                '100%': { backgroundPosition: '0% 50%' }
+              },
+              cooling: {
+                '0%': { filter: 'brightness(3) sepia(1) hue-rotate(-50deg) saturate(5) drop-shadow(0 0 20px orangered)' },
+                '100%': { filter: 'brightness(1) sepia(0) hue-rotate(0deg) saturate(1) drop-shadow(0 0 0 transparent)' }
+              },
+              steam: {
+                '0%': { transform: 'translateY(0) scale(1)', opacity: '0.6' },
+                '100%': { transform: 'translateY(-100px) scale(2)', opacity: '0' }
+              },
+              warp: {
+                '0%': { opacity: '0.5', transform: 'scale(1)' },
+                '50%': { opacity: '1', transform: 'scale(1.2)' },
+                '100%': { opacity: '0.5', transform: 'scale(1)' }
+              },
+              implode: {
+                '0%': { transform: 'scale(1)', opacity: '1', filter: 'blur(0px)' },
+                '100%': { transform: 'scale(0.01)', opacity: '0', filter: 'blur(10px)' }
+              },
+              supernova: {
+                '0%': { transform: 'scale(0)', opacity: '1' },
+                '50%': { opacity: '0.8' },
+                '100%': { transform: 'scale(10)', opacity: '0' }
+              },
+              'god-rays': {
+                '0%': { transform: 'rotate(0deg)' },
+                '100%': { transform: 'rotate(360deg)' }
+              },
+              chromatic: {
+                '0%': { textShadow: '2px 0 red, -2px 0 blue', transform: 'translate(1px, 1px)' },
+                '50%': { textShadow: '-2px 0 red, 2px 0 blue', transform: 'translate(-1px, -1px)' },
+                '100%': { textShadow: '2px 0 red, -2px 0 blue', transform: 'translate(1px, 1px)' }
+              },
+              'realistic-fire': {
+                '0%': { transform: 'translate(0, 0) scale(1)', opacity: '0.8', backgroundColor: '#ffffff' },
+                '15%': { transform: 'translate(2px, -5px) scale(1.2)', opacity: '1', backgroundColor: '#fde047' },
+                '40%': { transform: 'translate(-2px, -15px) scale(1)', opacity: '0.8', backgroundColor: '#f97316' },
+                '70%': { transform: 'translate(1px, -25px) scale(0.6)', opacity: '0.6', backgroundColor: '#dc2626' },
+                '100%': { transform: 'translate(0, -35px) scale(0)', opacity: '0', backgroundColor: '#000000' }
+              },
+              fog: {
+                '0%': { backgroundPosition: '0% 0%' },
+                '100%': { backgroundPosition: '200% 0%' }
+              },
+              bat: {
+                '0%': { transform: 'translate(-10vw, 10vh) scale(0.5)' },
+                '25%': { transform: 'translate(30vw, -5vh) scale(0.8)' },
+                '50%': { transform: 'translate(60vw, 15vh) scale(0.6)' },
+                '75%': { transform: 'translate(80vw, 0vh) scale(0.7)' },
+                '100%': { transform: 'translate(110vw, 20vh) scale(0.5)' }
+              },
+              bubble: {
+                '0%, 100%': { transform: 'translateY(0) scale(1)' },
+                '50%': { transform: 'translateY(-10px) scale(1.1)' }
+              },
+              burningCore: {
+                '0%, 100%': { filter: 'brightness(1.5) sepia(1) hue-rotate(-10deg) saturate(4) drop-shadow(0 0 5px #fde047)' },
+                '50%': { filter: 'brightness(1.8) sepia(1) hue-rotate(-15deg) saturate(5) drop-shadow(0 0 15px #fbbf24)' }
+              },
+              burningFlame: {
+                '0%': { filter: 'blur(3px) brightness(1.2) sepia(1) hue-rotate(-30deg) saturate(4) opacity(0.7)', transform: 'translateY(0) scale(1.02)' },
+                '50%': { filter: 'blur(5px) brightness(1.1) sepia(1) hue-rotate(-35deg) saturate(4) opacity(0.5)', transform: 'translateY(-5px) scale(1.05)' },
+                '100%': { filter: 'blur(8px) brightness(1) sepia(1) hue-rotate(-40deg) saturate(4) opacity(0)', transform: 'translateY(-10px) scale(1.08)' }
+              },
+              noblePulse: {
+                '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+                '50%': { opacity: '0.8', transform: 'scale(1.02)' }
+              },
+              holoSheen: {
+                '0%, 85%': { backgroundPosition: '200% 0', opacity: '0' },
+                '90%': { opacity: '0.3' },
+                '100%': { backgroundPosition: '-200% 0', opacity: '0' }
+              },
+              cinematicTitle: {
+                '0%': { opacity: '0', transform: 'scale(1.5)', letterSpacing: '0.15em', filter: 'blur(12px)' },
+                '100%': { opacity: '1', transform: 'scale(1)', letterSpacing: 'normal', filter: 'blur(0px)' }
+              }
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;600;800&display=swap');
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #0f172a;
+        color: #e2e8f0;
+        overflow: hidden; /* Prevent scrolling on main container */
+      }
+      .font-fantasy {
+        font-family: 'Cinzel', serif;
+      }
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1e293b; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #475569; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #64748b; 
+      }
+      
+      /* Fog Animation */
+      .fog-layer {
+          background: url('https://raw.githubusercontent.com/danielstuart14/CSS_FOG_ANIMATION/master/img/fog1.png') repeat-x;
+          background-size: contain;
+          width: 200%;
+          height: 100%;
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          opacity: 0.4;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@18.2.0",
+    "react/": "https://aistudiocdn.com/react@18.2.0/",
+    "react-dom/client": "https://aistudiocdn.com/react-dom@18.2.0/client?deps=react@18.2.0",
+    "react-dom": "https://aistudiocdn.com/react-dom@18.2.0?deps=react@18.2.0",
+    "uuid": "https://aistudiocdn.com/uuid@9.0.1",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@0.263.1?deps=react@18.2.0",
+    "@react-three/fiber": "https://aistudiocdn.com/@react-three/fiber@8.15.16?deps=react@18.2.0,react-dom@18.2.0,three@0.161.0",
+    "@react-three/drei": "https://aistudiocdn.com/@react-three/drei@9.99.0?deps=react@18.2.0,react-dom@18.2.0,three@0.161.0,@react-three/fiber@8.15.16",
+    "three": "https://aistudiocdn.com/three@0.161.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
