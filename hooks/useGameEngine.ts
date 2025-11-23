@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GameState, InventoryItem, Rarity, ItemType, ChatMessage } from '../types';
 import { RngService } from '../services/rngSystem';
@@ -23,6 +22,7 @@ const INITIAL_STATE: GameState = {
     candy: 0
   },
   inventory: [],
+  discoveredItems: [], // NEW
   equippedWeaponId: null,
   activeEventId: null,
   activeZone: 'void',
@@ -56,13 +56,22 @@ export const useGameEngine = () => {
             const parsed = JSON.parse(saved);
             const migratedInventory = (parsed.inventory || []).map((i: any) => ({
                 ...i,
-                count: i.count || 1
+                count: i.count || 1,
+                isLocked: i.isLocked || false
             }));
             
+            // MIGRATION: Populate discoveredItems from existing inventory if missing
+            let migratedDiscovered = parsed.discoveredItems || [];
+            if (migratedDiscovered.length === 0 && migratedInventory.length > 0) {
+                const inventoryIds = new Set(migratedInventory.map((i: any) => i.id));
+                migratedDiscovered = Array.from(inventoryIds);
+            }
+
             return { 
                 ...INITIAL_STATE, 
                 ...parsed, 
                 inventory: migratedInventory,
+                discoveredItems: migratedDiscovered, // Set migrated list
                 stats: { ...INITIAL_STATE.stats, ...parsed.stats },
                 wallet: { ...INITIAL_STATE.wallet, ...parsed.wallet, candy: parsed.wallet.candy || 0 },
                 activeZone: parsed.activeZone || 'void',
@@ -107,6 +116,8 @@ export const useGameEngine = () => {
         window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, []);
+
+  // ... (Rest of the code remains the same until attemptUpgrade)
 
   // --- CHAT SIMULATION ---
   useEffect(() => {
@@ -252,6 +263,19 @@ export const useGameEngine = () => {
       addMessage(`🏆 Quest Complete: ${quest.description}`);
   };
 
+  const toggleItemLock = (uuid: string) => {
+      setGameState(prev => {
+          const newInventory = prev.inventory.map(item => 
+              item.uuid === uuid ? { ...item, isLocked: !item.isLocked } : item
+          );
+          const item = newInventory.find(i => i.uuid === uuid);
+          if (item) {
+              addMessage(item.isLocked ? `🔒 ${item.name} Kilitlendi` : `🔓 ${item.name} Kilidi Açıldı`);
+          }
+          return { ...prev, inventory: newInventory };
+      });
+  };
+
   const performRoll = useCallback(() => {
     if (gameState.stats.energy < ROLL_COST) {
       addMessage("⚠️ Yetersiz Enerji!");
@@ -276,7 +300,8 @@ export const useGameEngine = () => {
         uuid: generateId(),
         upgradeLevel: 0,
         obtainedAt: Date.now(),
-        count: 1
+        count: 1,
+        isLocked: false
       };
 
       setCinematicItem(baseItem); 
@@ -310,9 +335,16 @@ export const useGameEngine = () => {
             newInventory.push(baseItem);
         }
 
+        // DISCOVERY LOGIC
+        const newDiscovered = [...prev.discoveredItems];
+        if (!newDiscovered.includes(baseItem.id)) {
+            newDiscovered.push(baseItem.id);
+        }
+
         return {
           ...prev,
           inventory: newInventory,
+          discoveredItems: newDiscovered,
           pityCounters: newPity,
           totalRolls: prev.totalRolls + 1
         };
@@ -355,7 +387,8 @@ export const useGameEngine = () => {
               uuid: generateId(),
               upgradeLevel: 0,
               obtainedAt: Date.now(),
-              count: 1
+              count: 1,
+              isLocked: false
           };
 
           setCinematicItem(baseItem);
@@ -373,7 +406,14 @@ export const useGameEngine = () => {
             } else {
                 newInventory.push(baseItem);
             }
-            return { ...prev, inventory: newInventory };
+
+            // DISCOVERY LOGIC
+            const newDiscovered = [...prev.discoveredItems];
+            if (!newDiscovered.includes(baseItem.id)) {
+                newDiscovered.push(baseItem.id);
+            }
+
+            return { ...prev, inventory: newInventory, discoveredItems: newDiscovered };
           });
           setIsRolling(false);
       }, 1000);
@@ -408,6 +448,11 @@ export const useGameEngine = () => {
       setLastItemObtained(cinematicItem);
       addMessage(`Gacha: [${cinematicItem.rarity}] ${cinematicItem.name}`);
       
+      // Show message for new discovery
+      if (!gameState.discoveredItems.includes(cinematicItem.id)) {
+          addMessage(`📖 NEW DISCOVERY: ${cinematicItem.name} added to Codex!`);
+      }
+
       if ([Rarity.MYTHIC, Rarity.DIVINE, Rarity.EXOTIC, Rarity.LEGENDARY].includes(cinematicItem.rarity)) {
           triggerShake();
           const msg: ChatMessage = {
@@ -440,10 +485,17 @@ export const useGameEngine = () => {
     const itemIndex = gameState.inventory.findIndex(i => i.uuid === uuid);
     if (itemIndex === -1) return;
     const item = gameState.inventory[itemIndex];
+    
+    if (item.isLocked) {
+        addMessage("🔒 Kilitli eşya satılamaz!");
+        return;
+    }
+
     if (uuid === gameState.equippedWeaponId && item.count <= 1) {
         addMessage("⚠️ Kuşanılan eşya satılamaz!");
         return;
     }
+    
     setGameState(prev => {
         const newInv = [...prev.inventory];
         const currentItem = newInv[itemIndex];
@@ -462,13 +514,69 @@ export const useGameEngine = () => {
     });
   };
 
+  const sellAllItems = () => {
+      const unequippedItemsValue = gameState.inventory.reduce((total, item) => {
+          if (item.isLocked) return total;
+          const isEquipped = item.uuid === gameState.equippedWeaponId;
+          const countToSell = isEquipped ? Math.max(0, (item.count || 1) - 1) : (item.count || 1);
+          return total + (countToSell * (item.sellValue || 0));
+      }, 0);
+
+      if (unequippedItemsValue <= 0) {
+          addMessage("⚠️ Satılacak boşta veya kilitsiz eşya yok.");
+          return;
+      }
+
+      setGameState(prev => {
+          let valueToAdd = 0;
+          const newInventory: InventoryItem[] = [];
+          
+          prev.inventory.forEach(item => {
+              if (item.isLocked) {
+                  newInventory.push(item);
+                  return;
+              }
+              const isEquipped = item.uuid === prev.equippedWeaponId;
+              const count = item.count || 1;
+              const sellVal = item.sellValue || 0;
+
+              if (isEquipped) {
+                  if (count > 1) {
+                      const soldCount = count - 1;
+                      valueToAdd += soldCount * sellVal;
+                      newInventory.push({ ...item, count: 1 });
+                  } else {
+                      newInventory.push(item);
+                  }
+              } else {
+                  valueToAdd += count * sellVal;
+              }
+          });
+
+          return {
+              ...prev,
+              inventory: newInventory,
+              wallet: { ...prev.wallet, coins: prev.wallet.coins + valueToAdd }
+          };
+      });
+      
+      addMessage(`💰 Tüm fazlalıklar satıldı! +${unequippedItemsValue} G`);
+  };
+
   const selectForgeItem = (uuid: string) => setSelectedForgeId(uuid);
 
   const attemptUpgrade = () => {
       if (isForging || !selectedForgeId) return;
+      
       const itemIndex = gameState.inventory.findIndex(i => i.uuid === selectedForgeId);
       if (itemIndex === -1) return;
       const item = gameState.inventory[itemIndex];
+
+      if (item.isLocked) {
+          addMessage("🔒 Kilitli eşya yükseltilemez!");
+          return;
+      }
+
       const currentLevel = item.upgradeLevel || 0;
       const successRate = UPGRADE_RATES[Math.min(currentLevel, UPGRADE_RATES.length - 1)];
       const cost = UPGRADE_COSTS[Math.min(currentLevel, UPGRADE_COSTS.length - 1)];
@@ -482,6 +590,10 @@ export const useGameEngine = () => {
           addMessage("⚠️ Yetersiz Malzeme! (Gereken: Demirci Taşı)");
           return;
       }
+      if (material.isLocked) {
+          addMessage("🔒 Malzeme (Demirci Taşı) kilitli!");
+          return;
+      }
 
       setIsForging(true);
 
@@ -489,55 +601,80 @@ export const useGameEngine = () => {
           const roll = Math.random() * 100;
           const isSuccess = roll <= successRate;
 
-          if (isSuccess) {
-              const newItem = {
-                  ...item,
-                  upgradeLevel: currentLevel + 1,
-                  power: Math.floor(item.power * 1.2) 
-              };
-              setForgedItemResult({ item: newItem, status: 'success' });
-              sendToDiscord(newItem, 'Forge');
-              setGameState(prev => {
-                   const newInv = [...prev.inventory];
-                   const stoneIndex = newInv.findIndex(i => i.id === 'blacksmith_stone');
+          setGameState(prev => {
+               const newInv = [...prev.inventory];
+               const newWallet = { ...prev.wallet, coins: prev.wallet.coins - cost };
+               let newEquippedId = prev.equippedWeaponId;
+
+               // Consume Material
+               const stoneIndex = newInv.findIndex(i => i.id === 'blacksmith_stone');
+               if (stoneIndex >= 0) {
                    if (newInv[stoneIndex].count > 1) {
                        newInv[stoneIndex] = { ...newInv[stoneIndex], count: newInv[stoneIndex].count - 1 };
                    } else {
                        newInv.splice(stoneIndex, 1);
                    }
-                   const newWallet = { ...prev.wallet, coins: prev.wallet.coins - cost };
-                   if (item.count > 1) {
-                       newInv[itemIndex] = { ...item, count: item.count - 1 };
-                       newInv.push({ ...newItem, uuid: generateId(), count: 1 });
-                   } else {
-                       newInv[itemIndex] = newItem;
-                   }
-                   return { ...prev, inventory: newInv, wallet: newWallet };
-              });
-              addMessage(`🔨 Upgrade Başarılı! ${item.name} +${currentLevel + 1}`);
-          } else {
-              setForgedItemResult({ item: item, status: 'broken' });
-              setGameState(prev => {
-                   const newInv = [...prev.inventory];
-                   const stoneIndex = newInv.findIndex(i => i.id === 'blacksmith_stone');
-                   if (newInv[stoneIndex].count > 1) {
-                       newInv[stoneIndex] = { ...newInv[stoneIndex], count: newInv[stoneIndex].count - 1 };
-                   } else {
-                       newInv.splice(stoneIndex, 1);
-                   }
-                   const newWallet = { ...prev.wallet, coins: prev.wallet.coins - cost };
-                   if (item.count > 1) {
-                       newInv[itemIndex] = { ...item, count: item.count - 1 };
-                   } else {
-                       newInv.splice(itemIndex, 1);
-                       if (prev.equippedWeaponId === item.uuid) {
-                           return { ...prev, inventory: newInv, wallet: newWallet, equippedWeaponId: null };
+               }
+
+               if (isSuccess) {
+                   const nextLevel = currentLevel + 1;
+                   const newItemData: InventoryItem = {
+                        ...item,
+                        upgradeLevel: nextLevel,
+                        power: Math.floor(item.power * 1.2),
+                        uuid: generateId(), // Fresh UUID for the new item state
+                        count: 1,
+                        isLocked: false
+                   };
+
+                   // Handle Old Item Removal/Decrement
+                   const originalItemIndex = newInv.findIndex(i => i.uuid === selectedForgeId);
+                   if (originalItemIndex !== -1) {
+                       if (item.count > 1) {
+                           newInv[originalItemIndex] = { ...item, count: item.count - 1 };
+                       } else {
+                           newInv.splice(originalItemIndex, 1);
+                           // If we just destroyed the equipped item instance, we should ideally equip the new one?
+                           // Or just unequip. Let's unequip for safety to avoid ghost references.
+                           if (newEquippedId === selectedForgeId) newEquippedId = null;
                        }
                    }
-                   return { ...prev, inventory: newInv, wallet: newWallet };
-              });
-              addMessage(`💔 Upgrade Başarısız! Eşya Kırıldı.`);
-          }
+
+                   // Handle New Item Addition (Stacking Check)
+                   // Check if we already have this exact item at this upgrade level
+                   const stackTargetIndex = newInv.findIndex(i => i.id === newItemData.id && i.upgradeLevel === nextLevel);
+                   if (stackTargetIndex !== -1) {
+                       // Stack it
+                       const stackTarget = newInv[stackTargetIndex];
+                       newInv[stackTargetIndex] = { ...stackTarget, count: (stackTarget.count || 1) + 1 };
+                       
+                       // We don't change equipped ID to the stack target generally, unless we want to be smart.
+                   } else {
+                       // Add new slot
+                       newInv.push(newItemData);
+                   }
+
+                   setForgedItemResult({ item: newItemData, status: 'success' });
+                   sendToDiscord(newItemData, 'Forge');
+                   addMessage(`🔨 Upgrade Başarılı! ${item.name} +${nextLevel}`);
+               } else {
+                   // FAILURE (Item Destroyed)
+                   const originalItemIndex = newInv.findIndex(i => i.uuid === selectedForgeId);
+                   if (originalItemIndex !== -1) {
+                       if (item.count > 1) {
+                           newInv[originalItemIndex] = { ...item, count: item.count - 1 };
+                       } else {
+                           newInv.splice(originalItemIndex, 1);
+                           if (newEquippedId === selectedForgeId) newEquippedId = null;
+                       }
+                   }
+                   setForgedItemResult({ item: item, status: 'broken' });
+                   addMessage(`💔 Upgrade Başarısız! Eşya Kırıldı.`);
+               }
+
+               return { ...prev, inventory: newInv, wallet: newWallet, equippedWeaponId: newEquippedId };
+          });
+
           setIsForging(false);
           updateQuestProgress('forge');
           setSelectedForgeId(null);
@@ -545,6 +682,7 @@ export const useGameEngine = () => {
   };
 
   const attackBoss = () => {
+      // ... (Same as before)
       if (!gameState.activeEnemy) return;
       setGameState(prev => {
           let newHp = prev.activeEnemy.hp - derivedStats.totalDamage;
@@ -584,6 +722,7 @@ export const useGameEngine = () => {
   };
 
   const buyUpgrade = (upgradeId: string) => {
+      // ... (Same as before)
       const upgradeDef = UPGRADES.find(u => u.id === upgradeId);
       if (!upgradeDef) return;
       const currentLevel = gameState.upgrades[upgradeId] || 1;
@@ -663,6 +802,7 @@ export const useGameEngine = () => {
     performRoll,
     performTrickOrTreat,
     sellItem,
+    sellAllItems,
     equipItem,
     selectForgeItem,
     attemptUpgrade,
@@ -674,6 +814,7 @@ export const useGameEngine = () => {
     unlockSecret,
     toggleEvent,
     enterHauntedRealm,
-    exitHauntedRealm
+    exitHauntedRealm,
+    toggleItemLock
   };
 };

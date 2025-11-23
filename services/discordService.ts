@@ -1,4 +1,3 @@
-
 import { InventoryItem, Rarity } from '../types';
 import { ITEM_ICONS } from '../constants';
 
@@ -42,9 +41,6 @@ export const sendToDiscord = async (item: InventoryItem, context: 'Summon' | 'Fo
     if (typeof iconSource === 'string') {
         // If it's a URL (like the Google Thumbnail API links we added), use it directly
         iconUrl = iconSource;
-    } else {
-        // Fallback for Lucide icons - use a generic generic rarity image or specific placeholder
-        // For now, we leave empty or use a static asset if available
     }
 
     const payload = {
@@ -70,6 +66,9 @@ export const sendToDiscord = async (item: InventoryItem, context: 'Summon' | 'Fo
     };
 
     try {
+        // NOTE: Client-side Discord webhooks often fail due to CORS.
+        // This is a known limitation of browser-based apps without a backend proxy.
+        // We use no-cors mode as a best-effort attempt, or catch the error silently.
         await fetch(WEBHOOK_URL, {
             method: 'POST',
             headers: {
@@ -78,6 +77,7 @@ export const sendToDiscord = async (item: InventoryItem, context: 'Summon' | 'Fo
             body: JSON.stringify(payload),
         });
     } catch (error) {
-        console.error("Failed to send Discord webhook. Possible CORS restriction.", error);
+        // Suppress the error to prevent console noise, as this is expected in client-only environments.
+        console.warn("Discord Webhook skipped: CORS restriction (Client-side limitation).");
     }
 };

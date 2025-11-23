@@ -50,6 +50,7 @@ export interface InventoryItem extends Item {
   upgradeLevel: number;
   obtainedAt: number;
   count: number; // Stack quantity
+  isLocked?: boolean; // NEW: Lock status
 }
 
 export interface PlayerStats {
@@ -108,6 +109,7 @@ export interface GameState {
   stats: PlayerStats;
   wallet: Wallet;
   inventory: InventoryItem[];
+  discoveredItems: string[]; // NEW: Track IDs of items ever found
   equippedWeaponId: string | null; // Manual Equip
   activeEventId: string | null; // Event System
   activeZone: 'void' | 'haunted'; // NEW: Zone System

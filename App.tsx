@@ -1,17 +1,19 @@
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useGameEngine } from './hooks/useGameEngine';
 import { Rarity, InventoryItem, ItemType, Item } from './types';
 import { RARITY_COLORS, RARITY_BG, ITEM_VISUALS, ITEM_ICONS, PITY_THRESHOLDS, ROLL_COST, UPGRADES, RARITY_ORDER, QUESTS_DB, UPGRADE_RATES, UPGRADE_COSTS } from './constants';
 import { ITEMS_DB } from './data/gameData';
-import { Star, Zap, Trash2, ShoppingBag, Skull, Sword, TrendingUp, Coins, Diamond, Ghost, Hammer, MessageSquare, Send, Scroll, ShieldAlert, Info, ArrowUpCircle, ArrowLeft, Gift, Box, X, AlignLeft, Tag, Fingerprint, ArrowDownWideNarrow, ArrowUpNarrowWide, Clock, Hash, Layers, Sun } from 'lucide-react';
+import { Star, Zap, Trash2, ShoppingBag, Skull, Sword, TrendingUp, Coins, Diamond, Ghost, Hammer, MessageSquare, Send, Scroll, ShieldAlert, Info, ArrowUpCircle, ArrowLeft, Gift, Box, X, AlignLeft, Tag, Fingerprint, ArrowDownWideNarrow, ArrowUpNarrowWide, Clock, Hash, Layers, Sun, Book } from 'lucide-react';
 import { VoidWorld } from './components/VoidWorld';
 import { CinematicReveal } from './components/CinematicReveal';
 import { ForgeOverlay } from './components/ForgeOverlay';
 import { ForgeResultReveal } from './components/ForgeResultReveal';
-// Refactored Components
 import { ItemCard } from './components/ItemCard';
 import { ItemDetailModal } from './components/ItemDetailModal';
 import { MachineVisual } from './components/MachineVisual';
+import { WitchCauldron } from './components/WitchCauldron';
+import { CodexView } from './components/CodexView';
 
 const ProgressBar = ({ current, max, color = "bg-blue-500" }: { current: number, max: number, color?: string }) => (
   <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
@@ -24,18 +26,16 @@ type SortOption = 'rarity' | 'power' | 'value' | 'count' | 'newest' | 'type';
 export default function App() {
   const { 
       gameState, isRolling, isForging, cinematicItem, forgedItemResult, resolveCinematic, resolveForge, lastItemObtained, messages, shakeScreen, derivedStats, activeEvent, chatHistory,
-      performRoll, sellItem, equipItem, claimQuest, sendChatMessage, manualCharge, attackBoss, buyUpgrade, unlockSecret, toggleEvent,
-      selectForgeItem, attemptUpgrade, selectedForgeId, enterHauntedRealm, exitHauntedRealm, performTrickOrTreat
+      performRoll, sellItem, sellAllItems, equipItem, claimQuest, sendChatMessage, manualCharge, attackBoss, buyUpgrade, unlockSecret, toggleEvent,
+      selectForgeItem, attemptUpgrade, selectedForgeId, enterHauntedRealm, exitHauntedRealm, performTrickOrTreat, toggleItemLock
   } = useGameEngine();
   
-  const [activeTab, setActiveTab] = useState<'gacha' | 'inventory' | 'boss' | 'shop' | 'forge'>('gacha');
+  const [activeTab, setActiveTab] = useState<'gacha' | 'inventory' | 'codex' | 'boss' | 'shop' | 'forge'>('gacha');
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [isQuestOpen, setIsQuestOpen] = useState(false);
-  // const [showLootTable, setShowLootTable] = useState(false); // Removed hover state
   const [chatInput, setChatInput] = useState("");
   const [inspectItem, setInspectItem] = useState<InventoryItem | null>(null); 
   
-  // SORTING STATE
   const [sortBy, setSortBy] = useState<SortOption>('rarity');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   
@@ -56,7 +56,6 @@ export default function App() {
   };
   
   const handleLootInspect = (item: Item) => {
-        // Create a preview inventory item for inspection
         const previewItem: InventoryItem = {
             ...item,
             uuid: 'preview',
@@ -67,14 +66,12 @@ export default function App() {
         setInspectItem(previewItem);
   };
 
-  // SORTING LOGIC
   const sortedInventory = useMemo(() => {
       const items = [...gameState.inventory];
       return items.sort((a, b) => {
           let comparison = 0;
           switch (sortBy) {
               case 'rarity':
-                  // Higher index = Higher rarity. 
                   comparison = RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity);
                   break;
               case 'power':
@@ -99,143 +96,200 @@ export default function App() {
       });
   }, [gameState.inventory, sortBy, sortOrder]);
 
-  // --- HAUNTED REALM VIEW ---
   if (gameState.activeZone === 'haunted') {
       return (
-          <div className={`flex flex-col h-screen bg-[#1a0b2e] text-orange-100 font-sans overflow-hidden relative ${shakeScreen ? 'animate-shake' : ''}`}>
+          <div className={`flex flex-col h-screen bg-[#0d0616] text-orange-100 font-sans overflow-hidden relative ${shakeScreen ? 'animate-shake' : ''}`}>
                 <CinematicReveal item={cinematicItem} onComplete={resolveCinematic} />
                 
                 <ItemDetailModal item={inspectItem} onClose={() => setInspectItem(null)} />
                 
-                <div className="absolute inset-0 bg-gradient-to-b from-[#1a0b2e] via-[#2d1b4e] to-[#1a0b2e] pointer-events-none z-0"></div>
-                <div className="absolute bottom-0 left-0 w-full h-64 opacity-30 pointer-events-none z-0">
+                {/* Background Atmosphere */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#1a0b2e_0%,#050308_100%)] pointer-events-none z-0"></div>
+                <div className="absolute inset-0 opacity-20 pointer-events-none z-0 bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')]"></div>
+                
+                {/* Animated Fog Layer */}
+                <div className="absolute bottom-0 left-0 w-full h-96 opacity-40 pointer-events-none z-0 mix-blend-screen">
                     <div className="fog-layer animate-fog-scroll"></div>
                 </div>
-                <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-                    <div className="absolute animate-bat-fly text-black opacity-40" style={{top: '10%', left: '-10%'}}>🦇</div>
-                    <div className="absolute animate-bat-fly text-black opacity-30" style={{top: '40%', left: '-20%', animationDelay: '2s', animationDuration: '12s'}}>🦇</div>
-                    <div className="absolute animate-bat-fly text-black opacity-50" style={{top: '70%', left: '-5%', animationDelay: '5s'}}>🦇</div>
-                </div>
-                <div className="absolute top-0 left-0 w-32 h-32 opacity-40 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/spider-web.png')] z-0"></div>
-                <div className="absolute top-0 right-0 w-32 h-32 opacity-40 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/spider-web.png')] transform scale-x-[-1] z-0"></div>
 
-                {/* Header */}
-                <header className="h-20 bg-black/60 border-b border-purple-900/50 flex items-center justify-between px-6 shadow-2xl z-20 relative backdrop-blur-sm shrink-0">
+                {/* Bats */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+                    <div className="absolute animate-bat-fly text-black opacity-60" style={{top: '15%', left: '-10%'}}>🦇</div>
+                    <div className="absolute animate-bat-fly text-black opacity-40" style={{top: '45%', left: '-20%', animationDelay: '2s', animationDuration: '12s'}}>🦇</div>
+                </div>
+
+                <header className="h-20 bg-black/40 border-b border-purple-900/30 flex items-center justify-between px-6 shadow-2xl z-20 relative backdrop-blur-sm shrink-0">
                     <div className="flex flex-col">
-                        <h1 className="font-fantasy text-3xl text-orange-500 drop-shadow-[0_0_10px_rgba(234,88,12,0.8)] animate-pulse flex items-center gap-2">
-                            <Ghost size={28} className="text-purple-400" /> HAUNTED REALM
+                        <h1 className="font-fantasy text-4xl text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-purple-500 drop-shadow-lg animate-pulse flex items-center gap-3">
+                            <Ghost size={32} className="text-purple-400" /> HAUNTED REALM
                         </h1>
-                        <span className="text-xs text-purple-300/50 tracking-widest uppercase">The veil is thin...</span>
                     </div>
                     <div className="flex items-center gap-6">
-                        <div className="bg-black/50 border border-orange-900/50 px-4 py-2 rounded-full flex items-center gap-3 shadow-[0_0_15px_rgba(234,88,12,0.2)]">
-                             <span className="text-2xl animate-bounce">🍬</span>
+                        <div className="bg-[#1a1225] border-2 border-[#3d2b52] px-6 py-2 rounded-lg flex items-center gap-4 shadow-[0_0_20px_rgba(0,0,0,0.5)] relative group">
+                             <div className="absolute -top-2 -right-2 bg-orange-600 text-white text-[10px] font-bold px-2 rounded-full animate-bounce">EVENT</div>
+                             <span className="text-3xl drop-shadow-md group-hover:scale-110 transition-transform">🍬</span>
                              <div className="flex flex-col leading-none">
-                                 <span className="font-bold font-mono text-xl text-orange-100">{gameState.wallet.candy || 0}</span>
-                                 <span className="text-[10px] text-orange-400 uppercase">Candy Corn</span>
+                                 <span className="font-bold font-mono text-2xl text-orange-100 drop-shadow-md">{gameState.wallet.candy || 0}</span>
+                                 <span className="text-[10px] text-orange-400 uppercase tracking-widest opacity-80">Candy Corn</span>
                              </div>
                         </div>
-                        <button onClick={exitHauntedRealm} className="group flex items-center gap-2 bg-slate-900 hover:bg-red-900/80 px-6 py-3 rounded-xl text-sm font-bold transition-all border border-slate-700 hover:border-red-500 shadow-lg">
-                            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> ESCAPE
+                        <button onClick={exitHauntedRealm} className="group flex items-center gap-2 bg-red-950/80 hover:bg-red-900 text-red-200 px-6 py-3 rounded-lg text-sm font-bold transition-all border border-red-800 hover:border-red-500 shadow-lg uppercase tracking-wider">
+                            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Escape
                         </button>
                     </div>
                 </header>
 
-                {/* MAIN LAYOUT - 3 COLUMNS */}
-                <main className="flex-1 flex flex-col lg:flex-row p-4 gap-6 relative z-10 items-stretch justify-between overflow-hidden">
+                <main className="flex-1 flex flex-col lg:flex-row p-6 gap-8 relative z-10 items-center justify-center overflow-hidden">
                     
-                    {/* LEFT: GRAVEYARD (Boss) */}
-                    <div className="flex-1 bg-black/40 border-4 border-stone-800 rounded-3xl relative group cursor-crosshair shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden min-w-[300px]" onClick={attackBoss}>
-                        <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_40px,rgba(0,0,0,0.8)_40px,rgba(0,0,0,0.8)_50px)] opacity-30 pointer-events-none"></div>
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full text-center pt-6 z-20">
-                            <h2 className="font-fantasy text-2xl text-stone-400 drop-shadow-md tracking-widest">THE GRAVEYARD</h2>
-                            <div className="text-xs text-stone-600 font-mono">CLICK TO EXORCISE</div>
+                    {/* --- THE GRAVEYARD (BOSS STAGE) --- */}
+                    <div 
+                        className="relative w-[500px] h-[500px] group cursor-crosshair select-none active:scale-[0.99] transition-transform"
+                        onClick={attackBoss}
+                    >
+                        {/* 1. STONE FRAME (Outer Shell) */}
+                        <div className="absolute inset-0 z-20 pointer-events-none">
+                            {/* Top Bar */}
+                            <div className="absolute top-0 left-0 right-0 h-12 bg-[#2a2a2a] border-b-4 border-[#1a1a1a] rounded-t-2xl flex items-center justify-center shadow-lg">
+                                <div className="text-orange-500 font-fantasy text-2xl tracking-[0.2em] drop-shadow-[0_0_10px_rgba(234,88,12,0.8)]">THE GRAVEYARD</div>
+                            </div>
+                            {/* Left Pillar */}
+                            <div className="absolute top-12 bottom-0 left-0 w-8 bg-[#1f1f1f] border-r-2 border-[#0a0a0a] bg-[url('https://www.transparenttextures.com/patterns/dark-stone.png')]"></div>
+                            {/* Right Pillar */}
+                            <div className="absolute top-12 bottom-0 right-0 w-8 bg-[#1f1f1f] border-l-2 border-[#0a0a0a] bg-[url('https://www.transparenttextures.com/patterns/dark-stone.png')]"></div>
+                            {/* Bottom Base */}
+                            <div className="absolute bottom-0 left-0 right-0 h-12 bg-[#1a1a1a] border-t-4 border-[#0a0a0a] rounded-b-2xl bg-[url('https://www.transparenttextures.com/patterns/dark-stone.png')]"></div>
+                            
+                            {/* Corner Accents */}
+                            <div className="absolute -top-2 -left-2 w-16 h-16 bg-[#333] rounded-full border-4 border-[#111] z-30"></div>
+                            <div className="absolute -top-2 -right-2 w-16 h-16 bg-[#333] rounded-full border-4 border-[#111] z-30"></div>
+                            <div className="absolute -bottom-2 -left-2 w-16 h-16 bg-[#222] rounded-full border-4 border-[#111] z-30"></div>
+                            <div className="absolute -bottom-2 -right-2 w-16 h-16 bg-[#222] rounded-full border-4 border-[#111] z-30"></div>
                         </div>
-                        <div className="flex-1 flex flex-col items-center justify-center relative z-10 mt-4">
-                             <div className="w-48 h-48 relative animate-float-slow">
-                                 <div className="absolute inset-0 bg-purple-600 rounded-full filter blur-[50px] opacity-20 animate-pulse"></div>
-                                 {gameState.activeEnemy.id.includes('ghost') || gameState.activeEnemy.id.includes('halloween')
-                                    ? <Ghost size={180} className="text-purple-300 drop-shadow-[0_0_30px_rgba(168,85,247,0.6)] opacity-90" />
-                                    : <Skull size={180} className="text-stone-400" />
-                                 }
-                             </div>
-                             <div className="mt-8 text-center w-full px-12">
-                                <h2 className="text-2xl font-fantasy text-purple-200 mb-4">{gameState.activeEnemy.name}</h2>
-                                <div className="flex justify-between text-xs font-bold mb-1 tracking-wider">
-                                    <span className="text-purple-400">HEALTH</span>
-                                    <span className="text-white">{gameState.activeEnemy.hp} / {gameState.activeEnemy.maxHp}</span>
-                                </div>
-                                <div className="h-4 bg-black rounded-full border border-purple-900/50 overflow-hidden w-full">
-                                    <div className="h-full bg-gradient-to-r from-purple-800 to-purple-500 transition-all duration-100 ease-out" style={{ width: `${(gameState.activeEnemy.hp / gameState.activeEnemy.maxHp) * 100}%` }}></div>
-                                </div>
-                                <div className="mt-4 text-sm font-bold text-orange-400">Drops: 🍬 Candy Corn</div>
-                             </div>
-                        </div>
-                    </div>
 
-                    {/* CENTER: CAULDRON (Gacha) */}
-                    <div className="flex-1 flex flex-col items-center justify-end relative min-w-[300px]">
-                        <div className="absolute top-0 text-center w-full z-20 pt-4">
-                             <h2 className="font-fantasy text-3xl text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.5)] tracking-widest">WITCH'S BREW</h2>
-                             <div className="text-xs text-green-800 font-mono">THROW CANDY IN</div>
+                        {/* 2. SCENE BACKGROUND (Inner Content) */}
+                        <div className="absolute inset-[20px] bg-black overflow-hidden rounded-lg border-4 border-[#0f0f0f] shadow-inner z-10">
+                            {/* Sky */}
+                            <div className="absolute inset-0 bg-gradient-to-b from-[#0f0518] to-[#1f100a]"></div>
+                            
+                            {/* Moon */}
+                            <div className="absolute top-8 right-12 w-24 h-24 rounded-full bg-orange-100 opacity-80 shadow-[0_0_50px_rgba(255,165,0,0.5)] blur-sm"></div>
+                            
+                            {/* Silhouette Trees */}
+                            <div className="absolute bottom-0 left-0 w-full h-48 bg-[url('https://www.transparenttextures.com/patterns/black-twill.png')] opacity-80" 
+                                 style={{ clipPath: 'polygon(0% 100%, 10% 60%, 20% 90%, 30% 50%, 40% 100%, 60% 100%, 70% 40%, 80% 80%, 90% 30%, 100% 100%)', backgroundColor: '#050505' }}>
+                            </div>
+
+                            {/* Ground/Lava Cracks */}
+                            <div className="absolute bottom-0 w-full h-20 bg-gradient-to-t from-[#331005] to-transparent"></div>
+                            <div className="absolute bottom-[-10px] w-full h-10 bg-orange-600 blur-md animate-pulse opacity-40"></div>
+
+                            {/* Floating Souls */}
+                            <div className="absolute top-1/3 left-1/4 text-orange-500/30 animate-float-slow text-2xl">👻</div>
+                            <div className="absolute top-1/2 right-1/4 text-orange-500/20 animate-float-slow text-xl" style={{animationDelay: '1.5s'}}>👻</div>
                         </div>
-                        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-32 h-full z-0">
-                             <div className="absolute bottom-1/2 left-2 w-4 h-4 bg-green-500 rounded-full opacity-60 animate-cauldron-bubble"></div>
-                             <div className="absolute bottom-1/3 right-4 w-6 h-6 bg-green-400 rounded-full opacity-50 animate-cauldron-bubble" style={{animationDelay: '0.5s'}}></div>
-                             <div className="absolute bottom-2/3 left-6 w-3 h-3 bg-purple-500 rounded-full opacity-60 animate-cauldron-bubble" style={{animationDelay: '1.2s'}}></div>
+
+                        {/* 3. BOSS ENTITY */}
+                        <div className="absolute inset-0 z-10 flex items-center justify-center mt-8">
+                             {/* Boss Glow */}
+                             <div className="absolute w-64 h-64 bg-orange-600/20 rounded-full blur-[60px] animate-pulse"></div>
+                             
+                             {/* Boss Image / Icon */}
+                             <div className="relative group-active:scale-95 transition-transform duration-75">
+                                {gameState.activeEnemy.id.includes('pumpkin') ? (
+                                    // Custom Pumpkin King Visual
+                                    <div className="relative w-56 h-56">
+                                        <div className="absolute inset-x-0 bottom-0 h-4 bg-black/50 blur-md rounded-[100%] scale-x-150"></div>
+                                        <img src="https://cdn-icons-png.flaticon.com/512/2060/2060162.png" alt="Pumpkin King" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(0,0,0,0.8)] animate-float-slow filter brightness-110 contrast-125" />
+                                        <div className="absolute top-[35%] left-[25%] w-4 h-4 bg-yellow-200 rounded-full blur-sm animate-pulse"></div>
+                                        <div className="absolute top-[35%] right-[25%] w-4 h-4 bg-yellow-200 rounded-full blur-sm animate-pulse"></div>
+                                    </div>
+                                ) : (
+                                    <div className="text-9xl drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)] animate-float-slow">👻</div>
+                                )}
+                             </div>
                         </div>
-                        <div className="relative z-10 w-full flex flex-col items-center mb-10">
-                            <div className="w-64 h-8 bg-stone-800 rounded-[100%] border-2 border-stone-600 shadow-lg z-20"></div>
-                            <button onClick={performTrickOrTreat} disabled={isRolling || (gameState.wallet.candy || 0) < 50} className={`w-64 h-56 bg-gradient-to-b from-stone-800 to-stone-950 rounded-b-[100px] border-x-2 border-b-2 border-stone-700 relative overflow-hidden group transition-transform active:scale-95 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex flex-col items-center justify-center -mt-4`}>
-                                 <div className={`absolute top-0 left-0 w-full h-full bg-green-600/20 transition-all duration-1000 ${isRolling ? 'animate-pulse bg-green-500/40' : ''}`}></div>
-                                 <div className="relative z-10 text-center">
-                                     <div className="text-5xl mb-2 group-hover:scale-110 transition-transform">🎁</div>
-                                     <div className="font-fantasy font-bold text-xl text-green-300 group-hover:text-white">TRICK OR TREAT</div>
-                                     <div className="text-xs font-mono bg-black/50 px-2 py-1 rounded text-orange-300 mt-1 border border-orange-900/50">50 CANDY</div>
-                                 </div>
-                            </button>
-                            <div className="flex justify-center gap-1 -mt-4 z-0">
-                                 <img src="https://media.tenor.com/P-W7yXlkxV4AAAAC/fire-flame.gif" alt="Fire" className="w-12 h-12 mix-blend-screen opacity-90" />
-                                 <img src="https://media.tenor.com/P-W7yXlkxV4AAAAC/fire-flame.gif" alt="Fire" className="w-16 h-16 mix-blend-screen opacity-95 -mt-2" />
-                                 <img src="https://media.tenor.com/P-W7yXlkxV4AAAAC/fire-flame.gif" alt="Fire" className="w-12 h-12 mix-blend-screen opacity-90" />
+
+                        {/* 4. UI OVERLAYS (Health & Name) */}
+                        <div className="absolute top-20 right-8 z-30 w-48">
+                            <div className="bg-[#2a2a2a] border-2 border-[#4a3b2a] p-2 rounded shadow-xl transform rotate-1 hover:rotate-0 transition-transform">
+                                <div className="flex items-center gap-2 mb-1 border-b border-white/10 pb-1">
+                                    <Skull size={14} className="text-stone-400" />
+                                    <span className="text-xs font-bold text-stone-200 truncate">{gameState.activeEnemy.name}</span>
+                                </div>
+                                <div className="relative h-3 bg-black rounded-full overflow-hidden border border-white/10">
+                                    <div 
+                                        className="h-full bg-gradient-to-r from-red-900 to-red-600 transition-all duration-100" 
+                                        style={{ width: `${(gameState.activeEnemy.hp / gameState.activeEnemy.maxHp) * 100}%` }}
+                                    ></div>
+                                </div>
+                                <div className="text-[9px] text-right text-stone-500 font-mono mt-0.5">
+                                    {gameState.activeEnemy.hp} / {gameState.activeEnemy.maxHp}
+                                </div>
                             </div>
                         </div>
+
+                        {/* 5. DROP INFO BOX */}
+                        <div className="absolute bottom-16 right-8 z-30">
+                             <div className="bg-[#1a120b] border border-orange-900/50 px-3 py-1.5 rounded text-xs text-orange-300 font-bold shadow-lg flex items-center gap-2 transform -rotate-1">
+                                 <span>Drops:</span>
+                                 <div className="flex items-center gap-1">
+                                     <span>🍬</span>
+                                     <span>3-5 Candy</span>
+                                 </div>
+                             </div>
+                        </div>
+
+                        {/* 6. INTERACTION HINT */}
+                        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            <span className="text-red-500 font-fantasy text-xl drop-shadow-[0_2px_0_#000] tracking-widest animate-pulse">CLICK TO ATTACK</span>
+                        </div>
                     </div>
 
-                    {/* RIGHT: LOOT TABLE (Permanent) */}
-                    <div className="w-80 h-full bg-slate-950/90 border-2 border-purple-900/50 rounded-3xl p-4 shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-md flex flex-col relative overflow-hidden">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.15),transparent)] pointer-events-none"></div>
-                        <h3 className="font-fantasy text-xl text-orange-400 border-b border-orange-900/30 pb-4 mb-4 text-center flex items-center justify-center gap-2 relative z-10">
-                            <Gift size={20} /> MUHTEMEL ÖDÜLLER
-                        </h3>
-                        <div className="flex-1 overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-purple-900 scrollbar-track-black relative z-10">
+                    {/* NEW: WITCH CAULDRON */}
+                    <div className="flex-1 flex flex-col items-center justify-center relative min-w-[300px]">
+                        <WitchCauldron 
+                            onClick={performTrickOrTreat}
+                            disabled={isRolling || (gameState.wallet.candy || 0) < 50}
+                        />
+                    </div>
+
+                    <div className="w-80 h-[500px] bg-[#110a1f] border-2 border-purple-900/50 rounded-2xl p-0 shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col relative overflow-hidden">
+                        <div className="bg-[#1a0e2e] p-4 border-b border-purple-900/30 flex items-center justify-center gap-2 shadow-md z-10">
+                            <Gift size={18} className="text-orange-400" />
+                            <h3 className="font-fantasy text-lg text-orange-100 tracking-wide">MUHTEMEL ÖDÜLLER</h3>
+                        </div>
+                        
+                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagmonds-light.png')] opacity-5 pointer-events-none"></div>
+
+                        <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin scrollbar-thumb-purple-900 scrollbar-track-black/20 relative z-0">
                             {ITEMS_DB.filter(i => i.isEventItem).sort((a, b) => a.baseChance - b.baseChance).map(item => {
                                 const iconSource = ITEM_ICONS[item.id];
                                 const FallbackIcon = Box;
                                 return (
                                     <div 
                                         key={item.id} 
-                                        className="flex items-center gap-3 p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/10 transition-colors cursor-help group"
+                                        className="flex items-center gap-3 p-2.5 rounded-lg bg-black/20 border border-white/5 hover:bg-purple-900/20 hover:border-purple-500/30 transition-all cursor-help group relative overflow-hidden"
                                         onDoubleClick={() => handleLootInspect(item)}
                                         title="Double click to inspect"
                                     >
-                                        <div className={`w-12 h-12 rounded-lg border shadow-lg flex-shrink-0 flex items-center justify-center overflow-hidden ${ITEM_VISUALS[item.id] || RARITY_BG[item.rarity]}`}>
+                                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${RARITY_BG[item.rarity].replace('bg-', 'bg-')}`}></div>
+                                        
+                                        <div className={`w-10 h-10 rounded border border-white/10 shadow-sm flex-shrink-0 flex items-center justify-center overflow-hidden bg-[#0a0a0a]`}>
                                             {typeof iconSource === 'string' ? (
-                                                <img src={iconSource} alt={item.name} className="w-8 h-8 object-contain group-hover:scale-110 transition-transform" />
+                                                <img src={iconSource} alt={item.name} className="w-7 h-7 object-contain group-hover:scale-110 transition-transform" />
                                             ) : (
                                                 (() => {
                                                     const IconComp = iconSource || FallbackIcon;
-                                                    return <IconComp size={24} className={RARITY_COLORS[item.rarity].split(' ')[0]} />;
+                                                    return <IconComp size={20} className={RARITY_COLORS[item.rarity].split(' ')[0]} />;
                                                 })()
                                             )}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className={`font-bold text-sm truncate ${RARITY_COLORS[item.rarity].split(' ')[0]}`}>{item.name}</div>
-                                            <div className="text-[10px] text-slate-500 uppercase tracking-wider">{item.rarity}</div>
+                                            <div className={`font-bold text-xs truncate ${RARITY_COLORS[item.rarity].split(' ')[0]}`}>{item.name}</div>
+                                            <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">{item.rarity}</div>
                                         </div>
                                         <div className="text-right">
-                                            <div className="font-mono text-sm font-bold text-white">{item.baseChance}%</div>
-                                            <div className="text-[9px] text-slate-600">DROP</div>
+                                            <div className="font-mono text-xs font-bold text-white bg-white/5 px-1.5 py-0.5 rounded">{item.baseChance}%</div>
                                         </div>
                                     </div>
                                 );
@@ -245,10 +299,12 @@ export default function App() {
 
                 </main>
                 
-                <div className="h-16 bg-black/80 border-t border-purple-900/30 p-2 overflow-hidden z-20 font-mono text-xs text-orange-200/60 shrink-0">
-                     {messages.map((m, i) => (
-                            <div key={i} className="mb-0.5 truncate"><span className="text-purple-500 mr-2">>></span>{m}</div>
-                        ))}
+                <div className="h-12 bg-[#08040f] border-t border-purple-900/20 px-4 flex items-center z-20 font-mono text-[10px] text-purple-300/40 shrink-0">
+                     {messages.length > 0 && (
+                        <div className="truncate w-full">
+                            <span className="text-purple-500 mr-2">>></span>{messages[0]}
+                        </div>
+                     )}
                 </div>
           </div>
       );
@@ -279,7 +335,6 @@ export default function App() {
                             const progress = gameState.questProgress[quest.id] || 0;
                             const isCompleted = progress >= quest.target;
                             const isClaimed = gameState.claimedQuests.includes(quest.id);
-                            
                             return (
                                 <div key={quest.id} className={`p-4 rounded-lg border ${isClaimed ? 'border-green-900 bg-green-950/30 opacity-60' : isCompleted ? 'border-yellow-500 bg-yellow-950/30' : 'border-slate-700 bg-slate-900'}`}>
                                     <div className="flex justify-between mb-2">
@@ -292,13 +347,7 @@ export default function App() {
                                             <span className="flex items-center gap-1 text-yellow-200"><Coins size={10} /> {quest.reward.coins}</span>
                                             <span className="flex items-center gap-1 text-emerald-200"><Diamond size={10} /> {quest.reward.gems}</span>
                                         </div>
-                                        <button 
-                                            onClick={() => claimQuest(quest.id)}
-                                            disabled={!isCompleted || isClaimed}
-                                            className={`text-xs px-3 py-1 rounded font-bold ${isClaimed ? 'bg-transparent text-green-500' : isCompleted ? 'bg-yellow-600 text-white hover:bg-yellow-500 animate-pulse' : 'bg-slate-700 text-slate-500'}`}
-                                        >
-                                            {isClaimed ? 'CLAIMED' : isCompleted ? 'CLAIM' : 'LOCKED'}
-                                        </button>
+                                        <button onClick={() => claimQuest(quest.id)} disabled={!isCompleted || isClaimed} className={`text-xs px-3 py-1 rounded font-bold ${isClaimed ? 'bg-transparent text-green-500' : isCompleted ? 'bg-yellow-600 text-white hover:bg-yellow-500 animate-pulse' : 'bg-slate-700 text-slate-500'}`}>{isClaimed ? 'CLAIMED' : isCompleted ? 'CLAIM' : 'LOCKED'}</button>
                                     </div>
                                 </div>
                             );
@@ -352,6 +401,7 @@ export default function App() {
                 {[
                     { id: 'gacha', icon: Star, color: activeEvent ? 'orange' : 'purple', label: 'Fate' },
                     { id: 'inventory', icon: ShoppingBag, color: 'blue', label: 'Items', badge: gameState.inventory.length },
+                    { id: 'codex', icon: Book, color: 'amber', label: 'Codex' }, // NEW TAB
                     { id: 'shop', icon: TrendingUp, color: 'emerald', label: 'Upgrade' },
                     { id: 'forge', icon: Hammer, color: 'red', label: 'Forge' },
                     { id: 'boss', icon: Skull, color: 'red', label: 'Boss' },
@@ -378,23 +428,32 @@ export default function App() {
                                 {tab.badge}
                             </span>
                         )}
+                        
+                        {/* TOOLTIP */}
+                        <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-slate-600">
+                            {tab.label}
+                        </div>
                     </button>
                 ))}
                 <div className="mt-auto mb-4">
                     <button 
                         onClick={() => setIsQuestOpen(true)}
-                        className="p-3.5 rounded-2xl text-yellow-500 hover:bg-yellow-900/20 animate-pulse-fast relative"
+                        className="p-3.5 rounded-2xl text-yellow-500 hover:bg-yellow-900/20 animate-pulse-fast relative group"
                     >
                         <Scroll size={22} />
                         {Object.keys(gameState.questProgress).length > gameState.claimedQuests.length && (
                             <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
                         )}
+                        <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-slate-600">
+                            Quests
+                        </div>
                     </button>
                 </div>
             </nav>
 
             <div className="flex-1 overflow-y-auto relative scrollbar-hide">
                 {activeTab === 'gacha' ? (
+                    // ... (Gacha View Code - same as before)
                     <div className="relative w-full h-full overflow-hidden">
                         <VoidWorld level={gameState.bossLevel} isEventActive={!!activeEvent} />
                         <div className="relative z-10 flex flex-col items-center justify-center h-full max-h-[80vh] p-4 md:p-8">
@@ -477,6 +536,13 @@ export default function App() {
                                             {sortOrder === 'asc' ? <ArrowUpNarrowWide size={14} /> : <ArrowDownWideNarrow size={14} />}
                                             {sortOrder === 'asc' ? 'ASC' : 'DESC'}
                                         </button>
+
+                                        <button 
+                                            onClick={sellAllItems}
+                                            className="px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1.5 bg-red-900/50 border border-red-800 hover:bg-red-900 text-red-200 transition-colors ml-auto"
+                                        >
+                                            <Trash2 size={14} /> Sell All
+                                        </button>
                                     </div>
                                 </div>
                                 
@@ -489,6 +555,7 @@ export default function App() {
                                             onSell={sellItem} 
                                             onEquip={equipItem}
                                             onInspect={setInspectItem}
+                                            onToggleLock={toggleItemLock} // NEW: Pass toggle function
                                         />
                                     ))}
                                     {sortedInventory.length === 0 && (
@@ -500,6 +567,12 @@ export default function App() {
                             </div>
                         )}
 
+                        {/* NEW CODEX TAB */}
+                        {activeTab === 'codex' && (
+                            <CodexView discoveredItems={gameState.discoveredItems} onInspect={(item) => handleLootInspect(item)} />
+                        )}
+
+                        {/* ... (Other tabs: forge, shop, boss - same as before) */}
                         {activeTab === 'forge' && (
                             <div className="h-full flex flex-col md:flex-row gap-6">
                                 <div className="flex-1 bg-slate-950 rounded-xl border border-slate-800 p-4 overflow-y-auto max-h-[80vh]">
@@ -519,6 +592,7 @@ export default function App() {
                                                 showActions={false}
                                                 onSelect={selectForgeItem}
                                                 isSelected={selectedForgeId === item.uuid}
+                                                onToggleLock={toggleItemLock} // Also in forge
                                             />
                                         ))}
                                         {gameState.inventory.filter(i => [Rarity.LEGENDARY, Rarity.MYTHIC, Rarity.DIVINE, Rarity.EXOTIC].includes(i.rarity)).length === 0 && (
@@ -663,6 +737,7 @@ export default function App() {
                         )}
 
                         {activeTab === 'boss' && (
+                            // ... (Boss Tab same as before)
                             <div className="flex flex-col items-center justify-center h-full">
                                 <div className="w-full max-w-2xl relative">
                                     <div 
@@ -727,6 +802,7 @@ export default function App() {
                 </div>
             </div>
 
+            {/* Chat Panel (Same as before) */}
             {isChatOpen && (
                 <div className="w-64 md:w-80 bg-slate-950/95 border-l border-slate-800 flex flex-col z-20 absolute md:relative right-0 h-full shadow-2xl transition-all">
                     <div className="p-3 border-b border-slate-800 flex justify-between items-center">
