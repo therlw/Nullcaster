@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useGameEngine } from './hooks/useGameEngine';
 import { Rarity, InventoryItem, ItemType, Item } from './types';
@@ -302,7 +301,7 @@ export default function App() {
                 <div className="h-12 bg-[#08040f] border-t border-purple-900/20 px-4 flex items-center z-20 font-mono text-[10px] text-purple-300/40 shrink-0">
                      {messages.length > 0 && (
                         <div className="truncate w-full">
-                            <span className="text-purple-500 mr-2">>></span>{messages[0]}
+                            <span className="text-purple-500 mr-2">{'>'}{'>'}</span>{messages[0]}
                         </div>
                      )}
                 </div>
@@ -641,7 +640,7 @@ export default function App() {
                                                                 <span className="text-red-500 font-bold flex items-center gap-1">
                                                                     <ShieldAlert size={14} /> BREAKABLE
                                                                 </span>
-                                                            </div>
+                                                        </div>
                                                         </div>
 
                                                         <div className="w-full grid grid-cols-2 gap-4 mb-8">
